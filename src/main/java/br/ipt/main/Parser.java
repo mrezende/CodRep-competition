@@ -1,8 +1,8 @@
 package br.ipt.main;
 
 
-import br.ipt.models.Line;
-import org.apache.commons.lang3.StringUtils;
+import br.ipt.models.SourceLinePosition;
+import br.ipt.utils.Datasets;
 import spoon.Launcher;
 import spoon.reflect.CtModel;
 import spoon.reflect.code.CtAssignment;
@@ -12,50 +12,70 @@ import spoon.reflect.visitor.filter.TypeFilter;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Stream;
+import java.util.stream.Collectors;
 
 public class Parser {
 
-    public static final String DATASETS_DIRECTORY = "./Datasets/";
-    public static final String DATASET_ONE_SOLUTIONS = DATASETS_DIRECTORY + "Dataset1/Solutions/";
-    public static final String DATASET_ONE_TASKS = DATASETS_DIRECTORY + "Dataset1/Tasks/";
-    public static final String DATASET_ONE_JAVA = DATASETS_DIRECTORY + "Dataset1/Java/";
-    public static final String DATASET_ONE_MODEL = DATASETS_DIRECTORY + "Dataset1/Models/";
 
     public static void main(String[] args) throws IOException {
 
-        Launcher launcher = new Launcher();
-        String sourceFile = "1.java";
-        launcher.addInputResource(DATASET_ONE_JAVA + sourceFile);
 
-        launcher.buildModel();
+        Path javaPath = Datasets.getJavaPath(Datasets.DATASET_ONE);
 
-        CtModel model = launcher.getModel();
-        List<CtAssignment> list = model.getRootPackage().filterChildren(new TypeFilter<>(CtAssignment.class)).list();
+        List<String> javaSourceFiles = Files.list(javaPath).map((Path path) -> path.toString()).collect(Collectors.toList());
 
+        for (String sourceFile: javaSourceFiles) {
+            Launcher launcher = new Launcher();
 
-        List<Line> assignments = new ArrayList<>();
-        for (CtAssignment assignment: list) {
-            SourcePosition position = assignment.getPosition();
-            Line line = getLine(position);
-            assignments.add(line);
+            launcher.addInputResource(sourceFile);
+
+            launcher.buildModel();
+
+            CtModel model = launcher.getModel();
+            List<SourceLinePosition> assignments = getAssignmentLines(model);
+
+            List<String> assignmentLines = getSourceLines(sourceFile, assignments);
+
+            createModelFile(sourceFile, assignmentLines);
+
         }
 
-        List<String> sourceLines = Files.readAllLines(Paths.get(DATASET_ONE_JAVA + sourceFile));
+
+
+
+    }
+
+    private static void createModelFile(String sourceFile, List<String> sourceLines) throws IOException {
+        Path modelsPath = Datasets.getModelsPath(Datasets.DATASET_ONE);
+        Path assignmentPath = modelsPath.resolve("Assignments/");
+
+        if(Files.notExists(assignmentPath)) {
+            Files.createDirectories(assignmentPath);
+        }
+
+        Path assignmentFile = assignmentPath.resolve(sourceFile);
+
+
+        Files.write(assignmentFile, sourceLines);
+    }
+
+    private static List<String> getSourceLines(String sourceFile, List<SourceLinePosition> assignments) throws IOException {
+        Path javaPath = Datasets.getJavaPath(Datasets.DATASET_ONE);
+        Path javaSourcePath = javaPath.resolve(sourceFile);
+        List<String> sourceLines = Files.readAllLines(javaSourcePath);
 
         List<String> assignmentLines = new ArrayList<>();
-        for (Line line: assignments) {
+        for (SourceLinePosition sourceLinePosition : assignments) {
             String codeLine = "";
-            if(line.getStartLine() == line.getEndLine()) {
-                codeLine += sourceLines.get(line.getStartLine() - 1);
+            if(sourceLinePosition.getStartLine() == sourceLinePosition.getEndLine()) {
+                codeLine += sourceLines.get(sourceLinePosition.getStartLine() - 1);
                 codeLine = codeLine.trim();
 
 
             } else {
-                for(int i = line.getStartLine(); i <= line.getEndLine(); i++) {
+                for(int i = sourceLinePosition.getStartLine(); i <= sourceLinePosition.getEndLine(); i++) {
                     codeLine += sourceLines.get(i - 1);
                     codeLine = codeLine.trim();
                 }
@@ -64,27 +84,27 @@ public class Parser {
             assignmentLines.add(codeLine);
 
         }
-        String assignmentDirectory = DATASET_ONE_MODEL + "Assignments/";
-
-        Path path = Paths.get(assignmentDirectory);
-        if(Files.notExists(path)) {
-            Files.createDirectories(path);
-        }
-
-        Path file = Files.createFile(Paths.get(assignmentDirectory + sourceFile));
-
-
-
-        Files.write(file, assignmentLines);
-
-
+        return assignmentLines;
     }
 
-    private static Line getLine(SourcePosition position) {
+    private static List<SourceLinePosition> getAssignmentLines(CtModel model) {
+        List<CtAssignment> list = model.getRootPackage().filterChildren(new TypeFilter<>(CtAssignment.class)).list();
+
+
+        List<SourceLinePosition> assignments = new ArrayList<>();
+        for (CtAssignment assignment: list) {
+            SourcePosition position = assignment.getPosition();
+            SourceLinePosition sourceLinePosition = getLine(position);
+            assignments.add(sourceLinePosition);
+        }
+        return assignments;
+    }
+
+    private static SourceLinePosition getLine(SourcePosition position) {
         int startLine = position.getLine();
         int endLine = position.getEndLine();
 
-        return new Line(startLine, endLine);
+        return new SourceLinePosition(startLine, endLine);
     }
 
 }

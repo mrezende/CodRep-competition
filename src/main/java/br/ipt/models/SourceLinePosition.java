@@ -1,10 +1,10 @@
 package br.ipt.models;
 
-public class Line {
+public class SourceLinePosition {
 
     private int startLine;
     private int endLine;
-    public Line(int startLine, int endLine) {
+    public SourceLinePosition(int startLine, int endLine) {
         this.startLine = startLine;
         this.endLine = endLine;
     }
