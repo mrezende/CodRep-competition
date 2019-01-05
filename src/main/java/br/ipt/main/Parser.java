@@ -1,13 +1,16 @@
 package br.ipt.main;
 
 
+import br.ipt.models.CodeElement;
 import br.ipt.models.InputLocation;
 import br.ipt.models.SourceLinePosition;
 import br.ipt.utils.Dataset;
+import org.eclipse.jdt.core.dom.PrimitiveType;
 import spoon.Launcher;
 import spoon.reflect.CtModel;
 import spoon.reflect.code.CtAssignment;
 import spoon.reflect.cu.SourcePosition;
+import spoon.reflect.declaration.CtElement;
 import spoon.reflect.visitor.filter.TypeFilter;
 
 import javax.xml.crypto.Data;
@@ -37,6 +40,8 @@ public class Parser {
 
         }
 
+        long initialTimeMillis = System.currentTimeMillis();
+
 
         for (String datasetUri: datasetsUri) {
             Path datasetPath = Paths.get(datasetUri);
@@ -44,7 +49,7 @@ public class Parser {
 
             Path javaPath = dataset.getJavaPath();
 
-            InputLocation assignmentLocation = new InputLocation(dataset, "assignments");
+
 
             List<Path> javaSourceFiles = Files.list(javaPath).collect(Collectors.toList());
 
@@ -54,64 +59,35 @@ public class Parser {
 
                 launcher.addInputResource(sourceFile.toString());
 
-                launcher.buildModel();
+                try {
+                    launcher.buildModel();
 
-                CtModel model = launcher.getModel();
-                List<SourceLinePosition> assignments = getAssignmentLines(model);
+                    CtModel model = launcher.getModel();
 
-                List<String> assignmentLines = getSourceLines(sourceFile, assignments);
+                    CodeElement<CtAssignment> codeElement = new CodeElement<>(CtAssignment.class);
+                    List<String> assignmentLines = codeElement.getSourceLines(sourceFile, model);
 
-                assignmentLocation.createInputFile(sourceFile, assignmentLines);
+                    InputLocation assignmentLocation = new InputLocation(dataset, codeElement.getName());
 
-            }
+                    String inputFileName = sourceFile.getFileName().toString();
+                    assignmentLocation.createInputFile(inputFileName, assignmentLines);
+                } catch(Exception e) {
+                    e.printStackTrace();
 
-        }
-
-    }
-
-    private static List<String> getSourceLines(Path sourceFile, List<SourceLinePosition> assignments) throws IOException {
-
-        List<String> sourceLines = Files.readAllLines(sourceFile);
-
-        List<String> assignmentLines = new ArrayList<>();
-        for (SourceLinePosition sourceLinePosition : assignments) {
-            String codeLine = "";
-            if(sourceLinePosition.getStartLine() == sourceLinePosition.getEndLine()) {
-                codeLine += sourceLines.get(sourceLinePosition.getStartLine() - 1);
-                codeLine = codeLine.trim();
-
-
-            } else {
-                for(int i = sourceLinePosition.getStartLine(); i <= sourceLinePosition.getEndLine(); i++) {
-                    codeLine += sourceLines.get(i - 1);
-                    codeLine = codeLine.trim();
                 }
+
             }
 
-            assignmentLines.add(codeLine);
+
 
         }
-        return assignmentLines;
+
+        long elapsedTime = System.currentTimeMillis() - initialTimeMillis;
+
+        System.out.println("Elapsed Time: " + elapsedTime + " ms");
+
     }
 
-    private static List<SourceLinePosition> getAssignmentLines(CtModel model) {
-        List<CtAssignment> list = model.getRootPackage().filterChildren(new TypeFilter<>(CtAssignment.class)).list();
 
-
-        List<SourceLinePosition> assignments = new ArrayList<>();
-        for (CtAssignment assignment: list) {
-            SourcePosition position = assignment.getPosition();
-            SourceLinePosition sourceLinePosition = getLine(position);
-            assignments.add(sourceLinePosition);
-        }
-        return assignments;
-    }
-
-    private static SourceLinePosition getLine(SourcePosition position) {
-        int startLine = position.getLine();
-        int endLine = position.getEndLine();
-
-        return new SourceLinePosition(startLine, endLine);
-    }
 
 }

@@ -10,23 +10,22 @@ import java.util.List;
 public class InputLocation {
 
     private Dataset dataset;
-    private String codeElement;
+    private String codeElementName;
 
-    public InputLocation(Dataset dataset, String codeElement) {
+    public InputLocation(Dataset dataset, String codeElementName) {
         this.dataset = dataset;
-        this.codeElement = codeElement;
+        this.codeElementName = codeElementName;
     }
 
 
-    public void createInputFile(Path sourceFile, List<String> assignmentLines) {
-        String fileName = sourceFile.getFileName().toString();
+    public void createInputFile(String inputFileName, List<String> assignmentLines) {
 
         try {
-            Path codeElementPath = dataset.getInputPath().resolve(codeElement);
+            Path codeElementPath = dataset.getInputPath().resolve(codeElementName);
             if(Files.notExists(codeElementPath)) {
                 Files.createDirectories(codeElementPath);
             }
-            Path sourceFilePath = codeElementPath.resolve(fileName);
+            Path sourceFilePath = codeElementPath.resolve(inputFileName);
             Files.write(sourceFilePath, assignmentLines);
         } catch (IOException e) {
             e.printStackTrace();
