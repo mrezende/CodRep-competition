@@ -4,6 +4,8 @@ import spoon.reflect.CtModel;
 import spoon.reflect.code.CtAssignment;
 import spoon.reflect.cu.SourcePosition;
 import spoon.reflect.declaration.CtElement;
+import spoon.reflect.declaration.CtPackage;
+import spoon.reflect.visitor.chain.CtQuery;
 import spoon.reflect.visitor.filter.TypeFilter;
 
 import java.io.IOException;
@@ -33,36 +35,13 @@ public class CodeElement<T extends CtElement> {
         return (Class<T>) classCodeElement;
     }
 
-    public List<String> getSourceLines(Path sourceFile, CtModel model) throws IOException {
+    public List<SourceLinePosition> getSourceLinePositions(CtModel model) {
 
-        List<SourceLinePosition> assignments = getSourceLinePositions(model);
+        CtPackage rootPackage = model.getRootPackage();
 
-        List<String> sourceLines = Files.readAllLines(sourceFile);
+        CtQuery ctQuery = rootPackage.filterChildren(new TypeFilter<>(this.getType()));
 
-        List<String> assignmentLines = new ArrayList<>();
-        for (SourceLinePosition sourceLinePosition : assignments) {
-            String codeLine = "";
-            if(sourceLinePosition.getStartLine() == sourceLinePosition.getEndLine()) {
-                codeLine += sourceLines.get(sourceLinePosition.getStartLine() - 1);
-                codeLine = codeLine.trim();
-
-
-            } else {
-                for(int i = sourceLinePosition.getStartLine(); i <= sourceLinePosition.getEndLine(); i++) {
-                    codeLine += sourceLines.get(i - 1);
-                    codeLine = codeLine.trim();
-                }
-            }
-
-            assignmentLines.add(codeLine);
-
-        }
-        return assignmentLines;
-    }
-
-    private List<SourceLinePosition> getSourceLinePositions(CtModel model) {
-
-        List<T> list = model.getRootPackage().filterChildren(new TypeFilter<>(this.getType())).list();
+        List<T> list = ctQuery.list();
 
 
         List<SourceLinePosition> linePositions = new ArrayList<>();

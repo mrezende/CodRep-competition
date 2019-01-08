@@ -65,12 +65,13 @@ public class Parser {
                     CtModel model = launcher.getModel();
 
                     CodeElement<CtAssignment> codeElement = new CodeElement<>(CtAssignment.class);
-                    List<String> assignmentLines = codeElement.getSourceLines(sourceFile, model);
+                    List<SourceLinePosition> sourceLinePositions = codeElement.getSourceLinePositions(model);
+                    List<String> codeLines = SourceLinePosition.extractSourceLines(sourceFile, sourceLinePositions);
 
                     InputLocation assignmentLocation = new InputLocation(dataset, codeElement.getName());
 
                     String inputFileName = sourceFile.getFileName().toString();
-                    assignmentLocation.createInputFile(inputFileName, assignmentLines);
+                    assignmentLocation.createInputFile(inputFileName, codeLines);
                 } catch(Exception e) {
                     e.printStackTrace();
 
